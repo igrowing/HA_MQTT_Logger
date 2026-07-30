@@ -45,7 +45,7 @@
         "from": "now-30d",
         "to": "now"
     },
-    "refresh": "30s",
+    "refresh": "1m",
     "templating": {
         "list": [
             {
@@ -79,8 +79,8 @@
             "id": 1,
             "type": "table",
             "title": "MQTT devices",
-            "description": "One row per device, derived from every MQTT message logged to Loki by the Node-RED mqtt-loki-logger flow. 'Online' = at least one message from that device in the last 10 minutes.",
-            "gridPos": { "h": 14, "w": 24, "x": 0, "y": 0 },
+            "description": "One row per device, derived from every MQTT message logged to Loki by the Node-RED mqtt-loki-logger flow. 'Online' = at least one message from that device in the last 10 minutes, OR its last known .../availability, .../online, or .../status payload (retained LWT, looked back over 24h) says online/true.",
+            "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
             "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
             "targets": [
                 {
@@ -92,7 +92,7 @@
                 {
                     "refId": "B",
                     "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-                    "expr": "sum by (device) (count_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\"}[10m]))",
+                    "expr": "(sum by (device) (count_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\"}[10m]))) or (sum by (device) (last_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", topic=~\".*(availability|online|status)$\"} | regexp `(?i)^\\s*\"?(?P<state>online|offline|true|false)\"?\\s*$` | label_format is_online=`{{if or (eq .state \"online\") (eq .state \"true\")}}1{{else}}0{{end}}` | unwrap is_online [24h])))",
                     "queryType": "instant"
                 }
             ],
@@ -336,7 +336,7 @@
             "type": "heatmap",
             "title": "Message volume heatmap (by device)",
             "description": "Message count per device per time bucket. Darker cells = busier periods; empty rows/columns highlight silent devices or dead zones. Filtered by the selected device(s).",
-            "gridPos": { "h": 12, "w": 24, "x": 0, "y": 28 },
+            "gridPos": { "h": 12, "w": 24, "x": 0, "y": 23 },
             "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
             "targets": [
                 {
