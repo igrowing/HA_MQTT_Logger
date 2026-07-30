@@ -27,6 +27,12 @@
             "id": "table",
             "name": "Table",
             "version": ""
+        },
+        {
+            "type": "panel",
+            "id": "heatmap",
+            "name": "Heatmap",
+            "version": ""
         }
     ],
     "title": "MQTT Devices",
@@ -323,6 +329,66 @@
                         ]
                     }
                 ]
+            }
+        },
+        {
+            "id": 3,
+            "type": "heatmap",
+            "title": "Message volume heatmap (by device)",
+            "description": "Message count per device per time bucket. Darker cells = busier periods; empty rows/columns highlight silent devices or dead zones. Filtered by the selected device(s).",
+            "gridPos": { "h": 12, "w": 24, "x": 0, "y": 28 },
+            "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+            "targets": [
+                {
+                    "refId": "A",
+                    "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+                    "expr": "sum by (device) (count_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device=~\"$device\"}[$__interval]))",
+                    "queryType": "range",
+                    "legendFormat": "{{device}}"
+                }
+            ],
+            "options": {
+                "calculate": false,
+                "yAxis": {
+                    "axisPlacement": "left",
+                    "reverse": false,
+                    "unit": "short"
+                },
+                "rowsFrame": {
+                    "layout": "auto"
+                },
+                "color": {
+                    "mode": "scheme",
+                    "scheme": "Oranges",
+                    "exponent": 0.5,
+                    "steps": 64,
+                    "reverse": false
+                },
+                "cellGap": 1,
+                "cellRadius": 0,
+                "filterValues": {
+                    "le": 1e-9
+                },
+                "tooltip": {
+                    "show": true,
+                    "yHistogram": false
+                },
+                "legend": {
+                    "show": true
+                },
+                "exemplars": {
+                    "color": "rgba(255,0,255,0.7)"
+                }
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "scaleDistribution": {
+                            "type": "linear"
+                        }
+                    }
+                },
+                "overrides": []
             }
         }
     ]
