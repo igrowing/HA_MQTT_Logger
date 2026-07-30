@@ -1,0 +1,399 @@
+[
+    {
+        "id": "f_mqtt_loki",
+        "type": "tab",
+        "label": "MQTT -> Loki Logger",
+        "disabled": false,
+        "info": "Subscribes to # on the local broker, drops homeassistant/# and $SYS/# discovery/system noise, derives labels (device/type/topic/format) from the topic and payload, and ships every message verbatim to Loki. Also flushes rolling stats to Loki every 60s (source=mqtt-logger,type=stats) and routes any push failure or thrown error to an error stream (source=mqtt-logger,type=error) so both are queryable/graphable in Grafana.\n\nSetup:\n1. Open the 'MQTT broker' config node and set host/port/credentials for your broker (e.g. core-mosquitto:1883).\n2. Open this tab's Environment Variables (hamburger menu > Flows > this flow > Edit, or double-click empty canvas > Environment Variables tab) and set LOKI_URL to your Loki add-on's actual address, e.g. http://homeassistant.local:3100/loki/api/v1/push. All three 'POST to Loki' nodes read their url from ${LOKI_URL}.\n3. Deploy. In Grafana, explore logs with {source=\"mqtt\"}, filter by device/type/topic/format, or {source=\"mqtt-logger\",type=\"stats\"} / type=\"error\" for the operational streams.",
+        "env": [
+            {
+                "name": "LOKI_URL",
+                "type": "str",
+                "value": "http://localhost:3100/loki/api/v1/push"
+            }
+        ]
+    },
+    {
+        "id": "mqtt_broker_ha",
+        "type": "mqtt-broker",
+        "name": "HA Mosquitto",
+        "broker": "core-mosquitto",
+        "port": "1883",
+        "clientid": "nodered-loki-logger",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "n00_comment",
+        "type": "comment",
+        "z": "f_mqtt_loki",
+        "name": "MQTT(#) -> Filter -> Detect type -> Extract labels -> POST Loki  |  branches: statistics (60s flush) + errors",
+        "info": "",
+        "x": 440,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "n01_mqtt_in",
+        "type": "mqtt in",
+        "z": "f_mqtt_loki",
+        "name": "MQTT #",
+        "topic": "#",
+        "qos": "0",
+        "datatype": "buffer",
+        "broker": "mqtt_broker_ha",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 120,
+        "y": 140,
+        "wires": [
+            [
+                "n02_filter"
+            ]
+        ]
+    },
+    {
+        "id": "n02_filter",
+        "type": "function",
+        "z": "f_mqtt_loki",
+        "name": "Filter homeassistant/# + $SYS/# + discovery/# + tasmota/#",
+        "func": "const topic = msg.topic || '';\n\n// drop HA discovery/state noise, broker system topics, Tasmota's own\n// discovery service messages, and anything under the literal\n// 'tasmota' topic word. comment these out if you want literally\n// everything.\nif (/^homeassistant\\//.test(topic)) return null;\nif (/^\\$SYS\\//.test(topic)) return null;\nif (/^discovery\\//.test(topic)) return null;\nif (/^tasmota\\//.test(topic)) return null;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 140,
+        "wires": [
+            [
+                "n03_detect_type"
+            ]
+        ]
+    },
+    {
+        "id": "n03_detect_type",
+        "type": "function",
+        "z": "f_mqtt_loki",
+        "name": "Detect payload type",
+        "func": "// preserve payload verbatim as a UTF-8 string, whatever it was\nlet raw;\nif (Buffer.isBuffer(msg.payload)) {\n    raw = msg.payload.toString('utf8');\n} else if (typeof msg.payload === 'string') {\n    raw = msg.payload;\n} else {\n    raw = JSON.stringify(msg.payload);\n}\n\nlet format = 'text';\ntry {\n    JSON.parse(raw);\n    format = 'json';\n} catch (e) {\n    format = 'text';\n}\n\nmsg.rawPayload = raw;\nmsg.format = format;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 140,
+        "wires": [
+            [
+                "n04_extract_labels"
+            ]
+        ]
+    },
+    {
+        "id": "n04_extract_labels",
+        "type": "function",
+        "z": "f_mqtt_loki",
+        "name": "Extract labels",
+        "func": "const topic = msg.topic || '';\nconst parts = topic.split('/').filter(p => p.length > 0);\n\n// Tasmota's default FullTopic is <prefix>/<device>/<endpoint>, where\n// prefix is one of cmnd/stat/tele - so the device name is the SECOND\n// segment there. Everything else uses <device>/.../<endpoint>, so the\n// device name is the FIRST segment.\nconst TASMOTA_PREFIXES = ['cmnd', 'stat', 'tele'];\nconst isTasmota = TASMOTA_PREFIXES.includes((parts[0] || '').toLowerCase());\n\nconst device = (isTasmota ? parts[1] : parts[0]) || 'unknown';\nconst type = parts[parts.length - 1] || 'unknown'; // last topic level\n\nmsg.labels = {\n    source: 'mqtt',\n    device: device,\n    type: type,\n    topic: topic,\n    format: msg.format\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 780,
+        "y": 140,
+        "wires": [
+            [
+                "n05_build_loki"
+            ]
+        ]
+    },
+    {
+        "id": "n05_build_loki",
+        "type": "function",
+        "z": "f_mqtt_loki",
+        "name": "Build Loki payload",
+        "func": "const ns = (BigInt(Date.now()) * 1000000n).toString();\n\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.payload = {\n    streams: [{\n        stream: msg.labels,\n        values: [[ns, msg.rawPayload]]\n    }]\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 990,
+        "y": 140,
+        "wires": [
+            [
+                "n06_http_post"
+            ]
+        ]
+    },
+    {
+        "id": "n06_http_post",
+        "type": "http request",
+        "z": "f_mqtt_loki",
+        "name": "POST to Loki",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "${LOKI_URL}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1200,
+        "y": 140,
+        "wires": [
+            [
+                "n07_check_resp"
+            ]
+        ]
+    },
+    {
+        "id": "n07_check_resp",
+        "type": "function",
+        "z": "f_mqtt_loki",
+        "name": "Check response",
+        "func": "if (msg.statusCode >= 200 && msg.statusCode < 300) {\n    return [msg, null];\n}\n\nmsg.errorInfo = {\n    statusCode: msg.statusCode,\n    statusMessage: msg.statusMessage,\n    topic: msg.labels ? msg.labels.topic : msg.topic\n};\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1420,
+        "y": 140,
+        "wires": [
+            [
+                "n08_update_stats"
+            ],
+            [
+                "n14_format_error"
+            ]
+        ]
+    },
+    {
+        "id": "n08_update_stats",
+        "type": "function",
+        "z": "f_mqtt_loki",
+        "name": "Update statistics",
+        "func": "let stats = flow.get('mqttStats') || { total: 0, byDevice: {}, byType: {}, byFormat: {} };\n\nstats.total++;\nconst d = msg.labels.device;\nconst t = msg.labels.type;\nconst f = msg.labels.format;\nstats.byDevice[d] = (stats.byDevice[d] || 0) + 1;\nstats.byType[t] = (stats.byType[t] || 0) + 1;\nstats.byFormat[f] = (stats.byFormat[f] || 0) + 1;\n\nflow.set('mqttStats', stats);\nmsg.payload = stats;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1650,
+        "y": 100,
+        "wires": [
+            [
+                "n09_debug_ok"
+            ]
+        ]
+    },
+    {
+        "id": "n09_debug_ok",
+        "type": "debug",
+        "z": "f_mqtt_loki",
+        "name": "running totals",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.total",
+        "statusType": "jsonata",
+        "x": 1870,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "n10_inject_stats",
+        "type": "inject",
+        "z": "f_mqtt_loki",
+        "name": "every 60s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 5,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 120,
+        "y": 300,
+        "wires": [
+            [
+                "n11_flush_stats"
+            ]
+        ]
+    },
+    {
+        "id": "n11_flush_stats",
+        "type": "function",
+        "z": "f_mqtt_loki",
+        "name": "Flush statistics to Loki",
+        "func": "const stats = flow.get('mqttStats') || { total: 0, byDevice: {}, byType: {}, byFormat: {} };\nconst ns = (BigInt(Date.now()) * 1000000n).toString();\n\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.payload = {\n    streams: [{\n        stream: { source: 'mqtt-logger', type: 'stats' },\n        values: [[ns, JSON.stringify(stats)]]\n    }]\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 300,
+        "wires": [
+            [
+                "n12_http_post_stats"
+            ]
+        ]
+    },
+    {
+        "id": "n12_http_post_stats",
+        "type": "http request",
+        "z": "f_mqtt_loki",
+        "name": "POST stats to Loki",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "${LOKI_URL}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 610,
+        "y": 300,
+        "wires": [
+            [
+                "n13_debug_stats"
+            ]
+        ]
+    },
+    {
+        "id": "n13_debug_stats",
+        "type": "debug",
+        "z": "f_mqtt_loki",
+        "name": "stats push result",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "statusCode",
+        "targetType": "msg",
+        "x": 850,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "n14_format_error",
+        "type": "function",
+        "z": "f_mqtt_loki",
+        "name": "Format error",
+        "func": "const ns = (BigInt(Date.now()) * 1000000n).toString();\n\nconst detail = {\n    message: msg.error ? (msg.error.message || String(msg.error)) : JSON.stringify(msg.errorInfo || {}),\n    topic: (msg.labels && msg.labels.topic) || msg.topic || 'unknown'\n};\n\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.payload = {\n    streams: [{\n        stream: {\n            source: 'mqtt-logger',\n            type: 'error',\n            device: (msg.labels && msg.labels.device) || 'mqtt-logger'\n        },\n        values: [[ns, JSON.stringify(detail)]]\n    }]\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1650,
+        "y": 460,
+        "wires": [
+            [
+                "n15_http_post_err"
+            ]
+        ]
+    },
+    {
+        "id": "n15_http_post_err",
+        "type": "http request",
+        "z": "f_mqtt_loki",
+        "name": "POST error to Loki",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "${LOKI_URL}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1880,
+        "y": 460,
+        "wires": [
+            [
+                "n16_debug_err"
+            ]
+        ]
+    },
+    {
+        "id": "n16_debug_err",
+        "type": "debug",
+        "z": "f_mqtt_loki",
+        "name": "Errors",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 2090,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "n17_catch",
+        "type": "catch",
+        "z": "f_mqtt_loki",
+        "name": "catch thrown errors",
+        "scope": null,
+        "uncaught": false,
+        "x": 1420,
+        "y": 540,
+        "wires": [
+            [
+                "n14_format_error"
+            ]
+        ]
+    }
+]

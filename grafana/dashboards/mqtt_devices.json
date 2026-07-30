@@ -1,0 +1,329 @@
+{
+    "__inputs": [
+        {
+            "name": "DS_LOKI",
+            "label": "Loki",
+            "description": "",
+            "type": "datasource",
+            "pluginId": "loki",
+            "pluginName": "Loki"
+        }
+    ],
+    "__requires": [
+        {
+            "type": "grafana",
+            "id": "grafana",
+            "name": "Grafana",
+            "version": "10.0.0"
+        },
+        {
+            "type": "datasource",
+            "id": "loki",
+            "name": "Loki",
+            "version": "1.0.0"
+        },
+        {
+            "type": "panel",
+            "id": "table",
+            "name": "Table",
+            "version": ""
+        }
+    ],
+    "title": "MQTT Devices",
+    "uid": "mqtt-devices-overview",
+    "schemaVersion": 39,
+    "version": 1,
+    "editable": true,
+    "timezone": "browser",
+    "time": {
+        "from": "now-30d",
+        "to": "now"
+    },
+    "refresh": "30s",
+    "templating": {
+        "list": [
+            {
+                "name": "device",
+                "label": "Device",
+                "type": "query",
+                "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+                "query": "label_values({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\"}, device)",
+                "refresh": 2,
+                "multi": true,
+                "includeAll": true,
+                "allValue": ".*",
+                "sort": 1
+            },
+            {
+                "name": "topic",
+                "label": "MQTT Topic",
+                "type": "query",
+                "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+                "query": "label_values({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device=~\"$device\"}, topic)",
+                "refresh": 2,
+                "multi": true,
+                "includeAll": true,
+                "allValue": ".*",
+                "sort": 1
+            }
+        ]
+    },
+    "panels": [
+        {
+            "id": 1,
+            "type": "table",
+            "title": "MQTT devices",
+            "description": "One row per device, derived from every MQTT message logged to Loki by the Node-RED mqtt-loki-logger flow. 'Online' = at least one message from that device in the last 10 minutes.",
+            "gridPos": { "h": 14, "w": 24, "x": 0, "y": 0 },
+            "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+            "targets": [
+                {
+                    "refId": "A",
+                    "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+                    "expr": "{source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\"}",
+                    "queryType": "range"
+                },
+                {
+                    "refId": "B",
+                    "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+                    "expr": "sum by (device) (count_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\"}[10m]))",
+                    "queryType": "instant"
+                }
+            ],
+            "transformations": [
+                {
+                    "id": "extractFields",
+                    "filter": { "id": "byRefId", "options": "A" },
+                    "options": {
+                        "source": "labels",
+                        "format": "auto",
+                        "replace": false,
+                        "keepTime": false
+                    }
+                },
+                {
+                    "id": "sortBy",
+                    "filter": { "id": "byRefId", "options": "A" },
+                    "options": {
+                        "fields": {},
+                        "sort": [ { "field": "Time", "desc": false } ]
+                    }
+                },
+                {
+                    "id": "groupBy",
+                    "filter": { "id": "byRefId", "options": "A" },
+                    "options": {
+                        "fields": {
+                            "device": { "aggregations": [], "operation": "groupby" },
+                            "Time": { "aggregations": ["last"], "operation": "aggregate" },
+                            "Line": { "aggregations": ["last"], "operation": "aggregate" },
+                            "topic": { "aggregations": ["last"], "operation": "aggregate" }
+                        }
+                    }
+                },
+                {
+                    "id": "labelsToFields",
+                    "filter": { "id": "byRefId", "options": "B" },
+                    "options": {
+                        "mode": "columns"
+                    }
+                },
+                {
+                    "id": "joinByField",
+                    "options": {
+                        "byField": "device",
+                        "mode": "outer"
+                    }
+                },
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": {
+                            "Time": false,
+                            "type": true,
+                            "format": true,
+                            "source": true
+                        },
+                        "indexByName": {
+                            "device": 0,
+                            "Value #B": 1,
+                            "Time (last)": 2,
+                            "topic (last)": 3,
+                            "Line (last)": 4,
+                            "Time": 5
+                        },
+                        "renameByName": {
+                            "device": "Device",
+                            "Value #B": "Online",
+                            "Time (last)": "Last seen",
+                            "topic (last)": "Last topic",
+                            "Line (last)": "Last message",
+                            "Time": "(internal)"
+                        }
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "align": "auto",
+                        "cellOptions": { "type": "auto" }
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": { "id": "byName", "options": "Device" },
+                        "properties": [
+                            { "id": "custom.width", "value": 140 }
+                        ]
+                    },
+                    {
+                        "matcher": { "id": "byName", "options": "Online" },
+                        "properties": [
+                            {
+                                "id": "custom.cellOptions",
+                                "value": { "type": "color-background" }
+                            },
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "type": "special",
+                                        "options": {
+                                            "match": "null",
+                                            "result": { "text": "No", "color": "red", "index": 0 }
+                                        }
+                                    },
+                                    {
+                                        "type": "value",
+                                        "options": {
+                                            "0": { "text": "No", "color": "red", "index": 1 }
+                                        }
+                                    },
+                                    {
+                                        "type": "range",
+                                        "options": {
+                                            "from": 1,
+                                            "to": 999999999,
+                                            "result": { "text": "Yes", "color": "green", "index": 2 }
+                                        }
+                                    }
+                                ]
+                            },
+                            { "id": "custom.width", "value": 90 }
+                        ]
+                    },
+                    {
+                        "matcher": { "id": "byName", "options": "Last seen" },
+                        "properties": [
+                            { "id": "custom.width", "value": 170 }
+                        ]
+                    },
+                    {
+                        "matcher": { "id": "byName", "options": "Last topic" },
+                        "properties": [
+                            { "id": "custom.width", "value": 200 }
+                        ]
+                    },
+                    {
+                        "matcher": { "id": "byName", "options": "(internal)" },
+                        "properties": [
+                            { "id": "custom.width", "value": 40 }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "type": "table",
+            "title": "MQTT messages",
+            "description": "Raw MQTT messages logged to Loki, filtered by the selected device(s) and topic(s). Timeframe uses the dashboard time picker (absolute or relative).",
+            "gridPos": { "h": 14, "w": 24, "x": 0, "y": 14 },
+            "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+            "targets": [
+                {
+                    "refId": "A",
+                    "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+                    "expr": "{source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device=~\"$device\", topic=~\"$topic\"}",
+                    "queryType": "range"
+                }
+            ],
+            "transformations": [
+                {
+                    "id": "extractFields",
+                    "options": {
+                        "source": "labels",
+                        "format": "auto",
+                        "replace": false,
+                        "keepTime": false
+                    }
+                },
+                {
+                    "id": "sortBy",
+                    "options": {
+                        "fields": {},
+                        "sort": [ { "field": "Time", "desc": true } ]
+                    }
+                },
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": {
+                            "type": true,
+                            "format": true,
+                            "source": true,
+                            "label": true,
+                            "labels": true,
+                            "tsNs": true,
+                            "labelTypes": true,
+                            "id": true,
+                            "_detected_level": true,
+                            "detected_level": true,
+                            "service_name": true
+                        },
+                        "indexByName": {
+                            "Time": 0,
+                            "device": 1,
+                            "topic": 2,
+                            "Line": 3
+                        },
+                        "renameByName": {
+                            "device": "Device",
+                            "topic": "Topic",
+                            "Line": "Message"
+                        }
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "align": "auto",
+                        "cellOptions": { "type": "auto" }
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": { "id": "byName", "options": "Time" },
+                        "properties": [
+                            { "id": "custom.width", "value": 170 }
+                        ]
+                    },
+                    {
+                        "matcher": { "id": "byName", "options": "Device" },
+                        "properties": [
+                            { "id": "custom.width", "value": 140 }
+                        ]
+                    },
+                    {
+                        "matcher": { "id": "byName", "options": "Topic" },
+                        "properties": [
+                            { "id": "custom.width", "value": 240 }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
