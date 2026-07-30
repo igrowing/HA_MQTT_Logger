@@ -117,8 +117,10 @@ boot** and **Watchdog**, then open its web UI (default login `admin` /
 
 You should now see the **MQTT Devices** dashboard with:
 - **MQTT devices** — one row per device, green/red "Online" status based
-  on whether it's logged a message in the last 10 minutes, last topic and
-  last message seen.
+  on whether it's logged a message in the last 10 minutes, OR its last
+  known `.../availability`, `.../online`, or `.../status` payload
+  (retained LWT, looked back over 24h) says online/true — plus last topic
+  and last message seen.
 - **MQTT messages** — a searchable table of raw messages, filterable by
   the dashboard's time range plus the **Device** and **MQTT Topic**
   dropdowns at the top (both multi-select, default to all; the Topic list
