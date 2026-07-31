@@ -53,7 +53,7 @@
                 "label": "Device",
                 "type": "query",
                 "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-                "query": "label_values({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\"}, device)",
+                "query": "label_values({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device!~\"^(cmnd|stat|tele)$\"}, device)",
                 "refresh": 2,
                 "multi": true,
                 "includeAll": true,
@@ -65,7 +65,7 @@
                 "label": "MQTT Topic",
                 "type": "query",
                 "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-                "query": "label_values({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device=~\"$device\"}, topic)",
+                "query": "label_values({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device=~\"$device\", device!~\"^(cmnd|stat|tele)$\"}, topic)",
                 "refresh": 2,
                 "multi": true,
                 "includeAll": true,
@@ -79,20 +79,20 @@
             "id": 1,
             "type": "table",
             "title": "MQTT devices",
-            "description": "One row per device, derived from every MQTT message logged to Loki by the Node-RED mqtt-loki-logger flow. 'Online' = at least one message from that device in the last 10 minutes, OR its last known .../availability, .../online, or .../status payload (retained LWT, looked back over 24h) says online/true.",
+            "description": "One row per device, derived from every MQTT message logged to Loki by the Node-RED mqtt-loki-logger flow. 'Online' = at least one non-LWT message from that device in the last 10 minutes, OR its last known .../availability, .../online, .../status, or .../LWT payload (retained, looked back over 24h, case-insensitive) says online/true.",
             "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
             "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
             "targets": [
                 {
                     "refId": "A",
                     "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-                    "expr": "{source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\"}",
+                    "expr": "{source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device!~\"^(cmnd|stat|tele)$\"}",
                     "queryType": "range"
                 },
                 {
                     "refId": "B",
                     "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-                    "expr": "(sum by (device) (count_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\"}[10m]))) or (sum by (device) (last_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", topic=~\".*(availability|online|status)$\"} | regexp `(?i)^\\s*\"?(?P<state>online|offline|true|false)\"?\\s*$` | label_format is_online=`{{if or (eq .state \"online\") (eq .state \"true\")}}1{{else}}0{{end}}` | unwrap is_online [24h])))",
+                    "expr": "(sum by (device) (count_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device!~\"^(cmnd|stat|tele)$\", topic!~\"(?i).*(availability|online|status|lwt)$\"}[10m]))) or (sum by (device) (last_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device!~\"^(cmnd|stat|tele)$\", topic=~\"(?i).*(availability|online|status|lwt)$\"} | regexp `(?i)^\\s*\"?(?P<state>online|offline|true|false)\"?\\s*$` | label_format is_online=`{{if or (eq (ToLower .state) \"online\") (eq (ToLower .state) \"true\")}}1{{else}}0{{end}}` | unwrap is_online [24h])))",
                     "queryType": "instant"
                 }
             ],
@@ -336,13 +336,13 @@
             "type": "heatmap",
             "title": "Message volume heatmap (by device)",
             "description": "Message count per device per time bucket. Darker cells = busier periods; empty rows/columns highlight silent devices or dead zones. Filtered by the selected device(s).",
-            "gridPos": { "h": 12, "w": 24, "x": 0, "y": 23 },
+            "gridPos": { "h": 12, "w": 24, "x": 0, "y": 28 },
             "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
             "targets": [
                 {
                     "refId": "A",
                     "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-                    "expr": "sum by (device) (count_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device=~\"$device\"}[$__interval]))",
+                    "expr": "sum by (device) (count_over_time({source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device=~\"$device\", device!~\"^(cmnd|stat|tele)$\"}[$__interval]))",
                     "queryType": "range",
                     "legendFormat": "{{device}}"
                 }

@@ -4,6 +4,8 @@ Logs every MQTT message seen by your Home Assistant broker into Loki, then
 gives you two Grafana panels to see which devices are online and to search
 the raw message history — filterable by device and topic.
 
+![Grafana screenshot](screenshots/screenshot.jpg)
+
 ## Architecture
 
 ```
