@@ -1,0 +1,22 @@
+#!/usr/bin/with-contenv bashio
+bashio::log.info "Starting Grafana..."
+
+export GF_PATHS_DATA=/data/grafana
+export GF_PATHS_LOGS=/data/grafana/logs
+export GF_PATHS_PLUGINS=/data/grafana/plugins
+export GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+# Reached only through HA's own Ingress (which already sits behind HA auth),
+# so skip Grafana's separate login screen. Anonymous access is scoped to
+# this container - it is never exposed on its own port.
+export GF_AUTH_ANONYMOUS_ENABLED=true
+export GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+export GF_AUTH_DISABLE_LOGIN_FORM=true
+export GF_SERVER_SERVE_FROM_SUB_PATH=true
+export GF_ANALYTICS_REPORTING_ENABLED=false
+export GF_ANALYTICS_CHECK_FOR_UPDATES=false
+
+mkdir -p "${GF_PATHS_DATA}" "${GF_PATHS_LOGS}" "${GF_PATHS_PLUGINS}"
+
+exec /usr/share/grafana/bin/grafana server \
+    --homepath=/usr/share/grafana \
+    --config=/usr/share/grafana/conf/defaults.ini

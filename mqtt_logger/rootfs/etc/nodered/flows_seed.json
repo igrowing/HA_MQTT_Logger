@@ -4,7 +4,7 @@
         "type": "tab",
         "label": "MQTT -> Loki Logger",
         "disabled": false,
-        "info": "Subscribes to # on the local broker, drops homeassistant/# and $SYS/# discovery/system noise, derives labels (device/type/topic/format) from the topic and payload, and ships every message verbatim to Loki. Also flushes rolling stats to Loki every 60s (source=mqtt-logger,type=stats) and routes any push failure or thrown error to an error stream (source=mqtt-logger,type=error) so both are queryable/graphable in Grafana.\n\nSetup:\n1. Open the 'MQTT broker' config node and set host/port/credentials for your broker (e.g. core-mosquitto:1883).\n2. Open this tab's Environment Variables (hamburger menu > Flows > this flow > Edit, or double-click empty canvas > Environment Variables tab) and set LOKI_URL to your Loki add-on's actual address, e.g. http://homeassistant.local:3100/loki/api/v1/push. All three 'POST to Loki' nodes read their url from ${LOKI_URL}.\n3. Deploy. In Grafana, explore logs with {source=\"mqtt\"}, filter by device/type/topic/format, or {source=\"mqtt-logger\",type=\"stats\"} / type=\"error\" for the operational streams.",
+        "info": "Subscribes to # on the local broker, drops homeassistant/# and $SYS/# discovery/system noise plus any pattern from the app's 'Filter patterns' option, derives labels (device/type/topic/format) from the topic and payload, and ships every remaining message verbatim to Loki. Also flushes rolling stats to Loki every 60s (source=mqtt-logger,type=stats) and routes any push failure or thrown error to an error stream (source=mqtt-logger,type=error) so both are queryable/graphable in Grafana.\n\nMQTT credentials and the filter pattern list come from the app's own configuration options (Settings -> Add-ons/Apps -> MQTT Logger -> Configuration) - nothing to edit here. LOKI_URL stays fixed at the in-container Loki instance.\n\nIn Grafana, explore logs with {source=\"mqtt\"}, filter by device/type/topic/format, or {source=\"mqtt-logger\",type=\"stats\"} / type=\"error\" for the operational streams.",
         "env": [
             {
                 "name": "LOKI_URL",
@@ -39,7 +39,9 @@
         "willPayload": "",
         "willMsg": {},
         "userProps": "",
-        "sessionExpiry": ""
+        "sessionExpiry": "",
+        "username": "${MQTT_USER}",
+        "password": "${MQTT_PASSWORD}"
     },
     {
         "id": "n00_comment",
@@ -76,12 +78,12 @@
         "id": "n02_filter",
         "type": "function",
         "z": "f_mqtt_loki",
-        "name": "Filter homeassistant/# + $SYS/# + discovery/# + tasmota/#",
-        "func": "const topic = msg.topic || '';\n\n// drop HA discovery/state noise, broker system topics, Tasmota's own\n// discovery service messages, and anything under the literal\n// 'tasmota' topic word. comment these out if you want literally\n// everything.\nif (/^homeassistant\\//.test(topic)) return null;\nif (/^\\$SYS\\//.test(topic)) return null;\nif (/^discovery\\//.test(topic)) return null;\nif (/^tasmota\\//.test(topic)) return null;\n\nreturn msg;",
+        "name": "Filter homeassistant/# + $SYS/# + discovery/# + tasmota/# + user patterns",
+        "func": "const topic = msg.topic || '';\n\n// drop HA discovery/state noise, broker system topics, Tasmota's own\n// discovery service messages, and anything under the literal\n// 'tasmota' topic word. comment these out if you want literally\n// everything.\nif (/^homeassistant\\//.test(topic)) return null;\nif (/^\\$SYS\\//.test(topic)) return null;\nif (/^discovery\\//.test(topic)) return null;\nif (/^tasmota\\//.test(topic)) return null;\n\n// drop anything matching one of the app's user-configured filter_regex\n// patterns, tested against both the topic and the raw payload text.\nconst patterns = context.get('filterPatterns') || [];\nif (patterns.length > 0) {\n    const payloadStr = Buffer.isBuffer(msg.payload) ? msg.payload.toString('utf8') : String(msg.payload);\n    for (const re of patterns) {\n        if (re.test(topic) || re.test(payloadStr)) return null;\n    }\n}\n\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
-        "initialize": "",
+        "initialize": "// runs once when the node starts/redeploys: compile the app's\n// filter_regex option (passed in as a JSON array via FILTER_REGEX_JSON)\n// into real RegExp objects, so per-message handling above doesn't\n// re-parse/re-compile them on every MQTT message.\nconst raw = env.get('FILTER_REGEX_JSON') || '[]';\nlet patterns = [];\ntry {\n    patterns = JSON.parse(raw).map((p) => new RegExp(p));\n} catch (e) {\n    node.warn('FILTER_REGEX_JSON contains an invalid pattern, ignoring filter_regex: ' + e.message);\n}\ncontext.set('filterPatterns', patterns);",
         "finalize": "",
         "libs": [],
         "x": 340,

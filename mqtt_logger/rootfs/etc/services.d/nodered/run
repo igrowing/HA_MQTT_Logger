@@ -1,0 +1,10 @@
+#!/usr/bin/with-contenv bashio
+bashio::log.info "Starting Node-RED..."
+
+mkdir -p /data/nodered
+if [[ ! -f /data/nodered/flows.json ]]; then
+    bashio::log.info "No existing flow found, seeding the MQTT -> Loki Logger flow"
+    cp /etc/nodered/flows_seed.json /data/nodered/flows.json
+fi
+
+exec node-red --userDir /data/nodered --port 1880
