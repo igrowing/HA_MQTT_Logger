@@ -12,7 +12,9 @@ name: Builder (armv7/armhf, best-effort)
 
 on:
   push:
-    branches: [main]
+    # TODO: drop "addon" once the addon branch is merged into main - see
+    # builder.yaml for why it's here.
+    branches: [main, addon]
     paths:
       - "mqtt_logger/**"
       - ".github/workflows/builder-32bit.yaml"

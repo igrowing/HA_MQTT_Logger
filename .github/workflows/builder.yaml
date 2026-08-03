@@ -2,7 +2,10 @@ name: Builder (amd64/aarch64)
 
 on:
   push:
-    branches: [main]
+    # TODO: drop "addon" once the addon branch is merged into main - it's
+    # here only to let the pipeline (including the release job) be tested
+    # from that branch before merging.
+    branches: [main, addon]
     paths:
       - "mqtt_logger/**"
       - ".github/workflows/builder.yaml"
