@@ -7,4 +7,4 @@ if [[ ! -f /data/nodered/flows.json ]]; then
     cp /etc/nodered/flows_seed.json /data/nodered/flows.json
 fi
 
-exec node-red --userDir /data/nodered --port 1880
+exec node-red --userDir /data/nodered --port 18880

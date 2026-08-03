@@ -52,12 +52,12 @@ separate login). You'll see:
 - **Message volume heatmap** - message count per device per time bucket, to
   spot busy periods or dead devices at a glance.
 
-## Advanced: reaching Node-RED directly
+## Advanced: editing the Node-RED flow
 
 The Node-RED editor isn't part of the sidebar panel by default, since the
 dashboard is meant to need no manual flow editing. If you want to inspect or
-tweak the flow, this app maps container port `1880` - open
-`http://<your-home-assistant-ip>:1880` directly. Any changes you make there
+tweak the flow, or the TCP port is already reserved by the other service in your HA, this app maps container port `18880` - open
+`http://<your-home-assistant-ip>:18880` directly. Any changes you make there
 persist across restarts (they're saved to this app's own data directory, not
 overwritten by updates).
 
