@@ -23,8 +23,12 @@ troubleshooting, and known limitations once it's installed.
 
 ## Installing
 
-1. In Home Assistant: Settings -> Add-ons/Apps -> Add-on/App Store -> ⋮ ->
-   Repositories -> add this repository's URL.
+[![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Figrowing%2FHA_MQTT_Logger)
+
+1. Click the button above (opens your own Home Assistant instance and
+   pre-fills the repository URL), or add it manually: Settings ->
+   Add-ons/Apps -> Add-on/App Store -> ⋮ -> Repositories -> paste
+   `https://github.com/igrowing/HA_MQTT_Logger`.
 2. Find **MQTT Logger** in the store and install it.
 3. Before starting it: install the official **Mosquitto broker**
    app/add-on if you don't already have one, and create a dedicated MQTT
