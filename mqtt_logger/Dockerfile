@@ -13,7 +13,7 @@
 # file to stay in global scope - an ARG declared between two FROM lines only
 # belongs to the stage above it, so BUILD_FROM has to live up here too, not
 # just before the stage that consumes it.
-ARG GRAFANA_VERSION=13.1.1
+ARG GRAFANA_VERSION=13.0.2
 ARG LOKI_VERSION=3.7.4
 ARG NODERED_VERSION=5.0.4
 ARG BUILD_FROM=ghcr.io/home-assistant/base:3.23
