@@ -38,7 +38,11 @@ troubleshooting, and known limitations once it's installed.
    `mqtt_password` to that user, and adjust `retention_days` /
    `filter_regex` if you want (defaults: 30 days, no extra filtering beyond
    the built-in HA-discovery/system-topic noise filters).
-5. Start the app. **MQTT Logger** appears in the sidebar with the dashboard
+5. Return to **MQTT Logger**'s Info tab and assert:
+  - "Show in sidebar" - for ease of access to the app;
+  - "Watchdog" - for restert of the app if crashes (not likely but safe!)
+  - "Auto update" - optionally.
+6. Start the app. **MQTT Logger** appears in the sidebar with the dashboard
    ready - no separate Grafana login, no manual Node-RED flow import, no
    Loki setup.
 
