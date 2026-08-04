@@ -14,6 +14,14 @@ export GF_AUTH_DISABLE_LOGIN_FORM=true
 export GF_ANALYTICS_REPORTING_ENABLED=false
 export GF_ANALYTICS_CHECK_FOR_UPDATES=false
 
+# The app ships exactly one dashboard, so Grafana's stock home page is a dead
+# click on the way to it. Point home at the provisioned dashboard file - the
+# file, not the uid, because the per-org "home dashboard" preference doesn't
+# apply to the anonymous viewer everyone here is. Note this setting lives in
+# defaults.ini's [dashboards] section; the long-standing GF_AUTH_* spelling
+# found in older docs and forum posts silently does nothing.
+export GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/dashboards/mqtt_devices.json
+
 # HA renders the sidebar panel as an iframe. Grafana defaults to
 # allow_embedding=false, i.e. "X-Frame-Options: deny", which the browser
 # reports as "<your-ha-host> refused to connect" on a grey page - the panel

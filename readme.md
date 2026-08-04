@@ -36,8 +36,8 @@ troubleshooting, and known limitations once it's installed.
    admin account).
 4. Open **MQTT Logger**'s Configuration tab, set `mqtt_username` /
    `mqtt_password` to that user, and adjust `retention_days` /
-   `filter_regex` if you want (defaults: 30 days, no extra filtering beyond
-   the built-in HA-discovery/system-topic noise filters).
+   `filter_regex` if you want (defaults: 180 days, no extra filtering beyond
+   the built-in HA-discovery/system-topic noise filters). `Save`!
 5. Return to **MQTT Logger**'s Info tab and assert:
   - "Show in sidebar" - for ease of access to the app;
   - "Watchdog" - for restert of the app if crashes (not likely but safe!)

@@ -89,6 +89,28 @@ tweak the flow, or the TCP port is already reserved by the other service in your
 persist across restarts (they're saved to this app's own data directory, not
 overwritten by updates).
 
+## Where the data lives
+
+Everything stateful sits in this app's own persistent volume, mounted at
+`/data` inside the container:
+
+| Path | What |
+| --- | --- |
+| `/data/loki` | The log database itself - chunks, TSDB index, WAL, compactor state |
+| `/data/grafana` | Grafana's SQLite DB (users, prefs, any dashboards you add) |
+| `/data/nodered` | `flows.json`, credentials, Node-RED settings |
+
+That volume is keyed to the app's slug and is kept when the app is stopped,
+restarted, or **updated** - a new version reuses the same volume, so your
+message history carries over. Two things do discard it: **uninstalling** the
+app, and installing it under a different slug (a local copy used for testing
+gets its own empty volume, and nothing migrates between the two).
+
+Home Assistant backups include `/data`, so a full log history is backed up
+along with the app - which also means backups grow with `retention_days`. If
+that gets unwieldy, `backup_exclude` in `config.yaml` can leave the Loki
+chunks out, at the cost of not restoring history with the app.
+
 ## Verifying end-to-end
 
 1. Publish a test MQTT message (e.g. via Developer Tools -> Actions ->

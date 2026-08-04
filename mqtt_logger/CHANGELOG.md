@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4
+
+- Open the MQTT Devices dashboard directly instead of Grafana's stock home
+  page.
+  
 ## 1.0.3
 
 - Fix the sidebar panel showing a grey "refused to connect" page: Grafana
