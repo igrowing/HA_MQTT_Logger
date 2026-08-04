@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.3
+
+- Fix the sidebar panel showing a grey "refused to connect" page: Grafana
+  sent `X-Frame-Options: deny`, so the browser blocked the Ingress iframe.
+- Fix Grafana's asset URLs under Ingress by deriving `root_url` from the
+  app's own Ingress path at startup.
+- Fix the endless MQTT reconnect loop caused by sharing the client id
+  `nodered-loki-logger` with the hand-imported flow from the pre-app version
+  of this project. New client id is `ha-mqtt-logger-addon`; existing installs
+  are migrated on start.
+- Update documentation.
+
 ## 1.0.2
 
 - Fix Node-RED authentication mechanism for MQTT broker, crashed the app.

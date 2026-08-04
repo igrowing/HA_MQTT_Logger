@@ -1,10 +1,34 @@
 #!/usr/bin/with-contenv bashio
 bashio::log.info "Starting Node-RED..."
 
+FLOWS=/data/nodered/flows.json
+
 mkdir -p /data/nodered
-if [[ ! -f /data/nodered/flows.json ]]; then
+if [[ ! -f "${FLOWS}" ]]; then
     bashio::log.info "No existing flow found, seeding the MQTT -> Loki Logger flow"
-    cp /etc/nodered/flows_seed.json /data/nodered/flows.json
+    cp /etc/nodered/flows_seed.json "${FLOWS}"
+fi
+
+# Up to 1.0.2 the broker node used client id "nodered-loki-logger" - the same
+# id the pre-app version of this project told people to import by hand into
+# their own Node-RED. MQTT ids must be unique per broker: when both are
+# connected, Mosquitto closes whichever session is older every time the other
+# one reconnects, so the two clients kick each other off forever (visible as
+# Connected/Disconnected alternating on Node-RED's 15s mqttReconnectTime).
+# Rename it in place on existing installs; flows.json is otherwise never
+# rewritten from the seed, so this is the only chance to migrate it.
+LEGACY_ID='nodered-loki-logger'
+if [[ "$(jq --arg id "${LEGACY_ID}" \
+    'any(.[]; .type == "mqtt-broker" and .clientid == $id)' "${FLOWS}")" == "true" ]]; then
+    if jq --arg id "${LEGACY_ID}" \
+        '(.[] | select(.type == "mqtt-broker" and .clientid == $id)
+          | .clientid) = "ha-mqtt-logger-addon"' "${FLOWS}" > "${FLOWS}.tmp"; then
+        mv "${FLOWS}.tmp" "${FLOWS}"
+        bashio::log.info "Migrated the broker client id to ha-mqtt-logger-addon (was nodered-loki-logger)"
+    else
+        rm -f "${FLOWS}.tmp"
+        bashio::log.warning "Could not migrate the broker client id in ${FLOWS}, leaving it untouched"
+    fi
 fi
 
 exec node-red --userDir /data/nodered --port 18880

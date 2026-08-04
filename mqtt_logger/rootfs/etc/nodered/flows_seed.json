@@ -19,7 +19,7 @@
         "name": "HA Mosquitto",
         "broker": "core-mosquitto",
         "port": "1883",
-        "clientid": "nodered-loki-logger",
+        "clientid": "ha-mqtt-logger-addon",
         "autoConnect": true,
         "usetls": false,
         "protocolVersion": "4",
