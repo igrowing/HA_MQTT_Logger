@@ -42,6 +42,11 @@ RUN apk add --no-cache nodejs npm jq \
 # rootfs/etc/cont-init.d/00-config.sh at container start, not at build time.
 COPY rootfs /
 
+# Grafana always scans these provisioning subdirs even though this add-on
+# only ships dashboards/datasources - without them it logs a startup error
+# for each ("no such file or directory") on every boot.
+RUN mkdir -p /etc/grafana/provisioning/plugins /etc/grafana/provisioning/alerting
+
 # Resolve the dashboard's Grafana-import-time datasource placeholder to the
 # fixed datasource uid provisioned in etc/grafana/provisioning/datasources -
 # file-based dashboard provisioning has no "pick a datasource" prompt like a

@@ -39,9 +39,7 @@
         "willPayload": "",
         "willMsg": {},
         "userProps": "",
-        "sessionExpiry": "",
-        "username": "${MQTT_USER}",
-        "password": "${MQTT_PASSWORD}"
+        "sessionExpiry": ""
     },
     {
         "id": "n00_comment",

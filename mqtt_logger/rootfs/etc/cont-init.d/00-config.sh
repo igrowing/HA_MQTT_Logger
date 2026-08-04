@@ -7,13 +7,23 @@ set -e
 
 OPTIONS=/data/options.json
 
-# --- MQTT credentials -> container-wide env vars, read by the Node-RED
-# flow's broker config node via ${MQTT_USER}/${MQTT_PASSWORD} substitution.
+# --- MQTT credentials -> container-wide env vars (used by ${LOKI_URL}-style
+# substitution elsewhere in the flow) AND directly into Node-RED's own
+# credentials store below - the broker node's username/password are
+# credential-type fields, which Node-RED only ever populates from
+# flows_cred.json on startup, never from ${VAR} placeholders in flows.json
+# itself (confirmed against node-red-node's 10-mqtt.js: opts.username/
+# opts.password are ignored on initial node construction).
 MQTT_USER="$(jq --raw-output '.mqtt_username // ""' "${OPTIONS}")"
 MQTT_PASSWORD="$(jq --raw-output '.mqtt_password // ""' "${OPTIONS}")"
 mkdir -p /run/s6/container_environment
 printf '%s' "${MQTT_USER}" > /run/s6/container_environment/MQTT_USER
 printf '%s' "${MQTT_PASSWORD}" > /run/s6/container_environment/MQTT_PASSWORD
+
+mkdir -p /data/nodered
+jq -n --arg user "${MQTT_USER}" --arg password "${MQTT_PASSWORD}" \
+    '{"mqtt_broker_ha": {"user": $user, "password": $password}}' \
+    > /data/nodered/flows_cred.json
 
 # --- Filter patterns -> a single JSON array env var, parsed once by the
 # flow's filter Function node.

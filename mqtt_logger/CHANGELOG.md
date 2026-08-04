@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- Fix Node-RED authentication mechanism for MQTT broker, crashed the app.
+
 ## 1.0.0
 
 - Initial release. Combines Node-RED, Loki, and Grafana into a single app:
