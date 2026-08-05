@@ -1,0 +1,3 @@
+#!/usr/bin/with-contenv bashio
+bashio::log.info "Starting Loki..."
+exec /usr/bin/loki -config.file=/data/loki/config.yaml -target=all

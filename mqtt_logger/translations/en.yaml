@@ -1,0 +1,22 @@
+configuration:
+  mqtt_username:
+    name: MQTT username
+    description: >-
+      Dedicated MQTT user for this app (Settings -> People -> Users -> Add
+      User - don't reuse your own admin account). Leave blank to connect
+      anonymously.
+  mqtt_password:
+    name: MQTT password
+    description: Password for the MQTT user above.
+  retention_days:
+    name: Loki retention (days)
+    description: >-
+      How many days of MQTT message history to keep before Loki deletes it.
+      Changing this takes effect on the next restart.
+  filter_regex:
+    name: Filter patterns
+    description: >-
+      Regex patterns (JavaScript syntax). Any MQTT message whose topic or
+      payload matches one of these is dropped before it reaches Loki. Leave
+      empty to log everything except the built-in homeassistant/#, $SYS/#,
+      discovery/#, and tasmota/# noise.

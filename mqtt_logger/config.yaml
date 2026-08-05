@@ -1,0 +1,35 @@
+name: MQTT Logger
+version: "1.0.8"
+slug: mqtt_logger
+description: Logs every MQTT message to Loki and browses it in a built-in Grafana dashboard
+url: "https://github.com/igrowing/HA_MQTT_Logger"
+arch:
+  - amd64
+  - aarch64
+  - armv7
+  # - armhf
+init: false
+startup: services
+boot: auto
+watchdog: "http://[HOST]:[PORT:3000]/api/health"
+ingress: true
+ingress_port: 3000
+ingress_entry: "/"
+panel_icon: mdi:message-text-clock
+panel_title: MQTT Logger
+image: "ghcr.io/igrowing/{arch}-mqtt-logger"
+ports:
+  18880/tcp: 18880
+ports_description:
+  18880/tcp: "Node-RED editor (optional - change if any other service in your HA already reserved TCP port 18880)"
+options:
+  mqtt_username: ""
+  mqtt_password: ""
+  retention_days: 180
+  filter_regex: []
+schema:
+  mqtt_username: "str"
+  mqtt_password: "password"
+  retention_days: "int(1,365)"
+  filter_regex:
+    - "str"

@@ -232,6 +232,16 @@
                         ]
                     },
                     {
+                        "matcher": { "id": "byName", "options": "Last message" },
+                        "properties": [
+                            {
+                                "id": "custom.cellOptions",
+                                "value": { "type": "json-view" }
+                            },
+                            { "id": "custom.inspect", "value": true }
+                        ]
+                    },
+                    {
                         "matcher": { "id": "byName", "options": "(internal)" },
                         "properties": [
                             { "id": "custom.width", "value": 40 }
@@ -326,6 +336,16 @@
                         "matcher": { "id": "byName", "options": "Topic" },
                         "properties": [
                             { "id": "custom.width", "value": 240 }
+                        ]
+                    },
+                    {
+                        "matcher": { "id": "byName", "options": "Message" },
+                        "properties": [
+                            {
+                                "id": "custom.cellOptions",
+                                "value": { "type": "json-view" }
+                            },
+                            { "id": "custom.inspect", "value": true }
                         ]
                     }
                 ]

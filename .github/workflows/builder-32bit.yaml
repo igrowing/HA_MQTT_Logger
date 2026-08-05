@@ -1,0 +1,82 @@
+name: Builder (armv7/armhf, best-effort)
+
+# 32-bit is NOT part of this repo's supported build matrix - Home Assistant
+# Supervisor dropped armhf/armv7/i386 support in the 2025.12 release line,
+# and the official app-builder tooling no longer targets them. This
+# workflow is a best-effort attempt for the shrinking population of
+# pre-2025.12 32-bit installs, kept deliberately non-blocking
+# (continue-on-error) so a failure here never blocks the amd64/aarch64
+# release in builder.yaml. Expect this to need occasional manual fixes, and
+# to eventually stop working outright as grafana/grafana-oss and
+# grafana/loki's own upstream images drop 32-bit manifests.
+
+on:
+  push:
+    # TODO: drop "addon" once the addon branch is merged into main - see
+    # builder.yaml for why it's here.
+    branches: [main, addon]
+    paths:
+      - "mqtt_logger/**"
+      - ".github/workflows/builder-32bit.yaml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and push (best-effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # home-assistant/base (the multi-arch tag the Dockerfile defaults
+          # to) is amd64 + arm64 only, so 32-bit builds have to name the
+          # per-arch base repo explicitly. Those repos are still published
+          # but stopped at Alpine 3.22 - there is no 3.23 tag for them.
+          - arch: armv7
+            platform: linux/arm/v7
+            build_from: ghcr.io/home-assistant/armv7-base:3.22
+          # # Expected to fail: neither grafana/grafana-oss nor grafana/loki
+          # # publishes a linux/arm/v6 manifest, so the COPY --from stages
+          # # cannot resolve no matter which base image is used. Kept in the
+          # # matrix as a tripwire for the day upstream changes its mind.
+          # - arch: armhf
+          #   platform: linux/arm/v6
+          #   build_from: ghcr.io/home-assistant/armhf-base:3.22
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Read app version
+        id: version
+        run: |
+          version="$(sed -n 's/^version: *"\(.*\)"/\1/p' mqtt_logger/config.yaml)"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (${{ matrix.arch }})
+        uses: docker/build-push-action@v6
+        with:
+          context: mqtt_logger
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            BUILD_FROM=${{ matrix.build_from }}
+          push: ${{ github.event_name == 'push' }}
+          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-mqtt-logger:${{ steps.version.outputs.version }},ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-mqtt-logger:latest

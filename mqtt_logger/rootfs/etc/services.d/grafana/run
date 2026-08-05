@@ -1,0 +1,58 @@
+#!/usr/bin/with-contenv bashio
+bashio::log.info "Starting Grafana..."
+
+export GF_PATHS_DATA=/data/grafana
+export GF_PATHS_LOGS=/data/grafana/logs
+export GF_PATHS_PLUGINS=/data/grafana/plugins
+export GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+# Reached only through HA's own Ingress (which already sits behind HA auth),
+# so skip Grafana's separate login screen. Anonymous access is scoped to
+# this container - it is never exposed on its own port.
+export GF_AUTH_ANONYMOUS_ENABLED=true
+export GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+export GF_AUTH_DISABLE_LOGIN_FORM=true
+export GF_ANALYTICS_REPORTING_ENABLED=false
+export GF_ANALYTICS_CHECK_FOR_UPDATES=false
+
+# The app ships exactly one dashboard, so Grafana's stock home page is a dead
+# click on the way to it. Point home at the provisioned dashboard file - the
+# file, not the uid, because the per-org "home dashboard" preference doesn't
+# apply to the anonymous viewer everyone here is. Note this setting lives in
+# defaults.ini's [dashboards] section; the long-standing GF_AUTH_* spelling
+# found in older docs and forum posts silently does nothing.
+export GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/dashboards/mqtt_devices.json
+
+# HA renders the sidebar panel as an iframe. Grafana defaults to
+# allow_embedding=false, i.e. "X-Frame-Options: deny", which the browser
+# reports as "<your-ha-host> refused to connect" on a grey page - the panel
+# never even requests the app. Framing is safe here: the only way in is
+# through Ingress, which already sits behind HA's own auth.
+export GF_SECURITY_ALLOW_EMBEDDING=true
+
+# Ingress serves the app under a per-installation path
+# (/api/hassio_ingress/<token>/) and strips that prefix before proxying to
+# us, so Grafana must keep serving its routes at "/" (serve_from_sub_path
+# stays off) while emitting every asset/API URL with the prefix already
+# attached - otherwise the browser resolves /public/build/*.js against the
+# HA root and the panel loads to a blank page. Only root_url's path matters;
+# the host/port parts stay at Grafana's own defaults.
+# bashio renamed its add-on helpers to bashio::app.*; the bashio::addon.*
+# aliases still work but log a deprecation warning, and older base images
+# only have the old name - so prefer whichever this image actually ships.
+if declare -F bashio::app.ingress_entry > /dev/null; then
+    INGRESS_ENTRY="$(bashio::app.ingress_entry)"
+else
+    INGRESS_ENTRY="$(bashio::addon.ingress_entry)"
+fi
+if bashio::var.has_value "${INGRESS_ENTRY}"; then
+    export GF_SERVER_ROOT_URL="%(protocol)s://%(domain)s:%(http_port)s${INGRESS_ENTRY}/"
+else
+    bashio::log.warning "Could not read this app's Ingress path; Grafana's own asset URLs may not resolve inside the sidebar panel"
+fi
+export GF_SERVER_SERVE_FROM_SUB_PATH=false
+
+mkdir -p "${GF_PATHS_DATA}" "${GF_PATHS_LOGS}" "${GF_PATHS_PLUGINS}"
+
+exec /usr/share/grafana/bin/grafana server \
+    --homepath=/usr/share/grafana \
+    --config=/usr/share/grafana/conf/defaults.ini
