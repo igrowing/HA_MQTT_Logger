@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.7
+
+- Fix build for armv7.
+
 ## 1.0.6
 
 - Remove **MQTT messages (readable)** panel as low added value for high screen footprint.

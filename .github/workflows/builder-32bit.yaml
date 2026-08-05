@@ -33,10 +33,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # home-assistant/base (the multi-arch tag the Dockerfile defaults
+          # to) is amd64 + arm64 only, so 32-bit builds have to name the
+          # per-arch base repo explicitly. Those repos are still published
+          # but stopped at Alpine 3.22 - there is no 3.23 tag for them.
           - arch: armv7
             platform: linux/arm/v7
+            build_from: ghcr.io/home-assistant/armv7-base:3.22
+          # Expected to fail: neither grafana/grafana-oss nor grafana/loki
+          # publishes a linux/arm/v6 manifest, so the COPY --from stages
+          # cannot resolve no matter which base image is used. Kept in the
+          # matrix as a tripwire for the day upstream changes its mind.
           - arch: armhf
             platform: linux/arm/v6
+            build_from: ghcr.io/home-assistant/armhf-base:3.22
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
@@ -61,15 +71,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # TODO: pin BUILD_FROM to the last home-assistant/base tag that still
-      # published a manifest for this platform (check
-      # https://github.com/home-assistant/docker-base/pkgs/container/base
-      # for the last release before the 2025.12 32-bit drop) - the current
-      # default in mqtt_logger/Dockerfile targets amd64/aarch64 only.
       - name: Build and push (${{ matrix.arch }})
         uses: docker/build-push-action@v6
         with:
           context: mqtt_logger
           platforms: ${{ matrix.platform }}
+          build-args: |
+            BUILD_FROM=${{ matrix.build_from }}
           push: ${{ github.event_name == 'push' }}
           tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-mqtt-logger:${{ steps.version.outputs.version }},ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-mqtt-logger:latest
