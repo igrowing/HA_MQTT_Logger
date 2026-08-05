@@ -1,4 +1,4 @@
-# MQTT Logger and browser
+# MQTT Logger and Browser
 
 Logs every MQTT message seen by your Home Assistant broker into Loki, then
 gives you a Grafana dashboard to see which devices are online and to search
@@ -21,16 +21,13 @@ the raw message history - filterable by device and topic.
    `mqtt_password` to that user, and adjust `retention_days` /
    `filter_regex` if you want (defaults: 30 days, no extra filtering beyond
    the built-in HA-discovery/system-topic noise filters).
-5. Return to **MQTT Logger**'s Info tab and assert:
-  - "Show in sidebar" - for ease of access to the app;
-  - "Watchdog" - for restert of the app if crashes (not likely but safe!)
+5. Return to **MQTT Logger**'s Info tab and enable:
+  - "Show in sidebar" - for ease of access to the app.
+  - "Watchdog" - for restarting the app if it crashes (not likely, but safe!).
   - "Auto update" - optionally.
 6. Start the app. **MQTT Logger** appears in the sidebar with the dashboard
    ready - no separate Grafana login, no manual Node-RED flow import, no
    Loki setup.
-
-See [mqtt_logger/DOCS.md](mqtt_logger/DOCS.md) for how to verify it's
-working end-to-end and for troubleshooting.
 
 ## Architecture
 
@@ -69,7 +66,7 @@ Open **MQTT Logger** from the sidebar (added automatically via Ingress - no
 separate login). You'll see:
 
 - **MQTT devices** - one row per device, green/red "Online" status based on
-  whether it's logged a message in the last 10 minutes, OR its last known
+  whether it's logged a message in the last 10 minutes, or its last known
   `.../availability`, `.../online`, or `.../status` payload (retained LWT,
   looked back over 24h) says online/true - plus last topic and last message
   seen.
@@ -89,10 +86,12 @@ as the device published it, and the Node-RED flow never rewrites your data.
 
 The Node-RED editor isn't part of the sidebar panel by default, since the
 dashboard is meant to need no manual flow editing. If you want to inspect or
-tweak the flow, or the TCP port is already reserved by the other service in your HA, this app maps container port `18880` - open
+tweak the flow, this app maps container port `18880` - open
 `http://<your-home-assistant-ip>:18880` directly. Any changes you make there
 persist across restarts (they're saved to this app's own data directory, not
-overwritten by updates).
+overwritten by updates). If port `18880` is already reserved by another
+service in your HA, change the mapping in this app's **Network**
+configuration.
 
 ## Where the data lives
 
@@ -157,12 +156,14 @@ chunks out, at the cost of not restoring history with the app.
 
 ## Known limitations
 
-- **armv7 / armhf builds are best-effort.** Home Assistant Supervisor
-  dropped 32-bit architecture support in the 2025.12 release line; current
-  Supervisor versions on 64-bit hardware only need `amd64`/`aarch64`. The
-  32-bit images are built separately, aren't covered by the same CI
-  guarantees, and may stop building entirely if upstream Node-RED/Loki/
-  Grafana images drop 32-bit support first.
+- **armv7 builds are best-effort; armhf builds do not work.** Home Assistant
+  Supervisor dropped 32-bit architecture support in the 2025.12 release
+  line; current Supervisor versions on 64-bit hardware only need
+  `amd64`/`aarch64`. armv7 images are built separately from a pinned,
+  no-longer-updated base image and aren't covered by the same CI
+  guarantees. armhf is currently unbuildable: neither Grafana nor Loki
+  publishes a `linux/arm/v6` image, so there is no base for this app to
+  build on until (if ever) upstream changes that.
 - Grafana is reached through Home Assistant's Ingress proxy, which serves the
   app under a per-install path prefix and strips that prefix again before the
   request reaches Grafana. The app reads its own prefix at startup and hands
@@ -172,6 +173,6 @@ chunks out, at the cost of not restoring history with the app.
 
 ## How to contribute
 
-* [Open an issue](https://github.com/igrowing/SimplyNet/issues) if you found a bug or want a new feature.
+- [Open an issue](https://github.com/igrowing/HA_MQTT_Logger/issues) if you found a bug or want a new feature.
 
-*  <a href="https://www.buymeacoffee.com/igrowing" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a> if you like the app and it makes your life a bit simpler.
+- <a href="https://www.buymeacoffee.com/igrowing" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a> if you like the app and it makes your life a bit simpler.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.9
+
+- Fix typos in documentation.
+
 ## 1.0.8
 
 - Drop armhf from pipeline build.

@@ -38,9 +38,9 @@ troubleshooting, and known limitations once it's installed.
    `mqtt_password` to that user, and adjust `retention_days` /
    `filter_regex` if you want (defaults: 180 days, no extra filtering beyond
    the built-in HA-discovery/system-topic noise filters). `Save`!
-5. Return to **MQTT Logger**'s Info tab and assert:
-  - "Show in sidebar" - for ease of access to the app;
-  - "Watchdog" - for restert of the app if crashes (not likely but safe!)
+5. Return to **MQTT Logger**'s Info tab and enable:
+  - "Show in sidebar" - for ease of access to the app.
+  - "Watchdog" - for restarting the app if it crashes (not likely, but safe!).
   - "Auto update" - optionally.
 6. Start the app. **MQTT Logger** appears in the sidebar with the dashboard
    ready - no separate Grafana login, no manual Node-RED flow import, no
@@ -51,7 +51,7 @@ working end-to-end and for troubleshooting.
 
 ## Architectures
 
-`amd64` and `aarch64` are the supported, CI-tested targets. `armv7`/`armhf`
+`amd64` and `aarch64` are the supported, CI-tested targets. `armv7`
 builds are attempted best-effort only (Home Assistant Supervisor dropped
 32-bit support in the 2025.12 release line) - see
 [mqtt_logger/DOCS.md](mqtt_logger/DOCS.md#known-limitations).
@@ -62,6 +62,6 @@ builds are attempted best-effort only (Home Assistant Supervisor dropped
 
 ## How to contribute
 
-* [Open an issue](https://github.com/igrowing/SimplyNet/issues) if you found a bug or want a new feature.
+- [Open an issue](https://github.com/igrowing/HA_MQTT_Logger/issues) if you found a bug or want a new feature.
 
-*  <a href="https://www.buymeacoffee.com/igrowing" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a> if you like the app and it makes your life a bit simpler.
+- <a href="https://www.buymeacoffee.com/igrowing" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a> if you like the app and it makes your life a bit simpler.
