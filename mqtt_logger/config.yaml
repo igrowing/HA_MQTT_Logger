@@ -1,5 +1,5 @@
 name: MQTT Logger
-version: "1.0.7"
+version: "1.0.8"
 slug: mqtt_logger
 description: Logs every MQTT message to Loki and browses it in a built-in Grafana dashboard
 url: "https://github.com/igrowing/HA_MQTT_Logger"
@@ -7,7 +7,7 @@ arch:
   - amd64
   - aarch64
   - armv7
-  - armhf
+  # - armhf
 init: false
 startup: services
 boot: auto

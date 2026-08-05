@@ -40,13 +40,13 @@ jobs:
           - arch: armv7
             platform: linux/arm/v7
             build_from: ghcr.io/home-assistant/armv7-base:3.22
-          # Expected to fail: neither grafana/grafana-oss nor grafana/loki
-          # publishes a linux/arm/v6 manifest, so the COPY --from stages
-          # cannot resolve no matter which base image is used. Kept in the
-          # matrix as a tripwire for the day upstream changes its mind.
-          - arch: armhf
-            platform: linux/arm/v6
-            build_from: ghcr.io/home-assistant/armhf-base:3.22
+          # # Expected to fail: neither grafana/grafana-oss nor grafana/loki
+          # # publishes a linux/arm/v6 manifest, so the COPY --from stages
+          # # cannot resolve no matter which base image is used. Kept in the
+          # # matrix as a tripwire for the day upstream changes its mind.
+          # - arch: armhf
+          #   platform: linux/arm/v6
+          #   build_from: ghcr.io/home-assistant/armhf-base:3.22
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
