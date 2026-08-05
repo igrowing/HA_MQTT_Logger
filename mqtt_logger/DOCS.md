@@ -76,9 +76,18 @@ separate login). You'll see:
 - **MQTT messages** - a searchable table of raw messages, filterable by the
   dashboard's time range plus the **Device** and **MQTT Topic** dropdowns at
   the top (both multi-select, default to all; the Topic list narrows to
-  whichever device(s) you have selected).
+  whichever device(s) you have selected). Hover a **Message** cell and click
+  the magnifier that appears to open the payload in a formatted, collapsible
+  JSON viewer instead of reading it as one long line.
+- **MQTT messages (readable)** - the same messages as a log stream, with JSON
+  payloads pretty-printed and indented. Click any line to expand it into a
+  per-key **Fields** table, where each key also gets filter-for / filter-out
+  buttons.
 - **Message volume heatmap** - message count per device per time bucket, to
   spot busy periods or dead devices at a glance.
+
+Both readable views are display-only: Loki still stores every payload exactly
+as the device published it, and the Node-RED flow never rewrites your data.
 
 ## Advanced: editing the Node-RED flow
 

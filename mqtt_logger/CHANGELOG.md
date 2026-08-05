@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.5
+
+- Make JSON payloads readable without changing what gets stored. The
+  **Message** column (and **Last message** on the devices table) now opens in
+  a formatted, collapsible JSON viewer via the magnifier that appears on
+  hover, and a new **MQTT messages (readable)** panel renders the same
+  messages as a pretty-printed log stream whose lines expand into a per-key
+  field table. Both are display-only - Loki keeps every payload verbatim.
+
 ## 1.0.4
 
 - Open the MQTT Devices dashboard directly instead of Grafana's stock home
