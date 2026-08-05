@@ -50,7 +50,7 @@ jobs:
       # Supported, tested path - matches the current official amd64/aarch64
       # app-builder guidance. This is the only arch pair this repo commits
       # to keeping working; see builder-32bit.yaml for the best-effort
-      # armv7/armhf attempt.
+      # armv7 attempt.
       - name: Build and push (amd64)
         uses: docker/build-push-action@v6
         with:
