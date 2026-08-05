@@ -30,12 +30,6 @@
         },
         {
             "type": "panel",
-            "id": "logs",
-            "name": "Logs",
-            "version": ""
-        },
-        {
-            "type": "panel",
             "id": "heatmap",
             "name": "Heatmap",
             "version": ""
@@ -358,37 +352,11 @@
             }
         },
         {
-            "id": 4,
-            "type": "logs",
-            "title": "MQTT messages (readable)",
-            "description": "The same messages as the table above, rendered as a log stream: JSON payloads are pretty-printed instead of shown as one long line. Click any line to expand it into a per-key 'Fields' table, with filter-for / filter-out buttons on each key. This is a display-only view - Loki still stores every payload verbatim, exactly as the device published it.",
-            "gridPos": { "h": 14, "w": 24, "x": 0, "y": 28 },
-            "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-            "targets": [
-                {
-                    "refId": "A",
-                    "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-                    "expr": "{source=\"mqtt\", topic!~\"^tasmota/.*|^discovery/.*\", device=~\"$device\", topic=~\"$topic\"}",
-                    "queryType": "range"
-                }
-            ],
-            "options": {
-                "showTime": true,
-                "showLabels": false,
-                "showCommonLabels": true,
-                "wrapLogMessage": true,
-                "prettifyLogMessage": true,
-                "enableLogDetails": true,
-                "dedupStrategy": "none",
-                "sortOrder": "Descending"
-            }
-        },
-        {
             "id": 3,
             "type": "heatmap",
             "title": "Message volume heatmap (by device)",
             "description": "Message count per device per time bucket. Darker cells = busier periods; empty rows/columns highlight silent devices or dead zones. Filtered by the selected device(s).",
-            "gridPos": { "h": 12, "w": 24, "x": 0, "y": 42 },
+            "gridPos": { "h": 12, "w": 24, "x": 0, "y": 28 },
             "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
             "targets": [
                 {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.6
+
+- Remove **MQTT messages (readable)** panel as low added value for high screen footprint.
+
 ## 1.0.5
 
 - Make JSON payloads readable without changing what gets stored. The
