@@ -1,0 +1,6 @@
+{
+  "mqtt_username": "",
+  "mqtt_password": "",
+  "retention_days": 30,
+  "filter_regex": ["dropme-by-user-pattern"]
+}

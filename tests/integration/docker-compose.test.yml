@@ -1,0 +1,55 @@
+# Integration harness for the MQTT Logger service.
+#
+#   docker compose -f tests/integration/docker-compose.test.yml up -d --build
+#   ./tests/integration/wait-for-ready.sh
+#   pytest -q tests/integration            # runs on the host, talks to the
+#                                          # published ports below
+#   docker compose -f tests/integration/docker-compose.test.yml down -v
+#
+# `logger` is the REAL add-on image (so the test also proves python3 +
+# py3-paho-mqtt resolve on the HA base), with its s6 entrypoint bypassed so
+# only the logger script runs - Loki and Grafana come from their own
+# services / aren't needed here.
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "18883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-t", "health/check", "-m", "ok", "-q", "0"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  loki:
+    image: grafana/loki:3.7.4
+    command: -config.file=/etc/loki/config.yaml
+    ports:
+      - "13100:3100"
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml:ro
+    # No healthcheck: this image's final stage is gcr.io/distroless/static,
+    # which ships neither a shell nor wget/curl, so a CMD-SHELL check can
+    # never execute. Readiness is instead polled from the host by
+    # wait-for-ready.sh (curl against the published port) before tests run.
+
+  logger:
+    build:
+      context: ../../mqtt_logger
+    entrypoint: []
+    command: ["python3", "-u", "/opt/mqtt-logger/run.py"]
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      OPTIONS_FILE: /opt/options.test.json
+    volumes:
+      - ./options.test.json:/opt/options.test.json:ro
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      loki:
+        condition: service_started

@@ -1,5 +1,5 @@
 name: MQTT Logger
-version: "1.0.9"
+version: "1.1.0"
 slug: mqtt_logger
 description: Logs every MQTT message to Loki and browses it in a built-in Grafana dashboard
 url: "https://github.com/igrowing/HA_MQTT_Logger"
@@ -18,10 +18,6 @@ ingress_entry: "/"
 panel_icon: mdi:message-text-clock
 panel_title: MQTT Logger
 image: "ghcr.io/igrowing/{arch}-mqtt-logger"
-ports:
-  18880/tcp: 18880
-ports_description:
-  18880/tcp: "Node-RED editor (optional - change if any other service in your HA already reserved TCP port 18880)"
 options:
   mqtt_username: ""
   mqtt_password: ""

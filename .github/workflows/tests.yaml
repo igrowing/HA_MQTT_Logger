@@ -1,0 +1,59 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, addon]
+    paths:
+      - "mqtt_logger/**"
+      - "tests/**"
+      - "pytest.ini"
+      - ".github/workflows/tests.yaml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "mqtt_logger/**"
+      - "tests/**"
+      - "pytest.ini"
+      - ".github/workflows/tests.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r tests/requirements.txt
+      - run: pytest -q
+
+  integration:
+    name: Integration (docker-compose)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r tests/requirements.txt
+
+      - name: Build and start the stack
+        run: docker compose -f tests/integration/docker-compose.test.yml up -d --build
+
+      - name: Wait for readiness
+        run: tests/integration/wait-for-ready.sh
+
+      - name: Run integration tests
+        run: pytest -q tests/integration
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose -f tests/integration/docker-compose.test.yml logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f tests/integration/docker-compose.test.yml down -v

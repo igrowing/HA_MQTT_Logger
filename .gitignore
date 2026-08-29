@@ -1,0 +1,10 @@
+# Runtime / debug artifacts left in the repo root while testing the add-on
+*.log
+worklog
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/

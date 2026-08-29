@@ -16,7 +16,7 @@ configuration:
   filter_regex:
     name: Filter patterns
     description: >-
-      Regex patterns (JavaScript syntax). Any MQTT message whose topic or
+      Regex patterns (Python re syntax). Any MQTT message whose topic or
       payload matches one of these is dropped before it reaches Loki. Leave
       empty to log everything except the built-in homeassistant/#, $SYS/#,
       discovery/#, and tasmota/# noise.
