@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.0
+
+- Replace the Node-RED MQTT ingest flow with a small built-in Python service.
+  Same behaviour and the same Loki streams (`source="mqtt"`, and
+  `source="mqtt-logger"` with `type="stats"` / `type="error"`), so the
+  dashboard is unchanged - but ~100-140 MB smaller image per architecture and
+  much lower RAM (Node-RED idled around 80-120 MB; the Python service is
+  ~15-25 MB).
+- New buffered writer: messages are queued and shipped to Loki in batches
+  with automatic retry/backoff while Loki is briefly unavailable. If Loki is
+  down long enough to fill the buffer (~20k messages) the oldest unsent
+  messages are dropped, and the count is reported to the `type="error"`
+  stream on recovery.
+- `filter_regex` patterns are now Python (`re`) syntax instead of JavaScript.
+  Common patterns (anchors, character classes, quantifiers, alternation) are
+  identical; a few constructs differ (named groups are `(?P<name>...)`,
+  JavaScript-only lookbehind quirks, `\d`/`\w` Unicode semantics).
+- The optional Node-RED editor on port `18880` is removed. `/data/nodered` is
+  deleted automatically on upgrade; Loki history and Grafana settings carry
+  over untouched.
+
 ## 1.0.9
 
 - Fix typos in documentation.

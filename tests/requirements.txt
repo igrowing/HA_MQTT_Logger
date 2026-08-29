@@ -1,0 +1,5 @@
+# Test-only dependencies. The add-on image ships just python3 + py3-paho-mqtt;
+# none of this goes into it.
+paho-mqtt>=2,<3
+pytest>=8
+requests>=2.31

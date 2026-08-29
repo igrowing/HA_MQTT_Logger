@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bashio
+bashio::log.info "Starting MQTT Logger service..."
+
+# The service reads /data/options.json itself for MQTT credentials and
+# filter_regex - nothing to render here. It subscribes to the broker,
+# filters/labels each message, and ships it to the in-container Loki.
+exec python3 -u /opt/mqtt-logger/run.py

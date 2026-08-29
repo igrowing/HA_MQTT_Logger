@@ -19,28 +19,28 @@ the raw message history - filterable by device and topic.
    admin account).
 4. Open **MQTT Logger**'s Configuration tab, set `mqtt_username` /
    `mqtt_password` to that user, and adjust `retention_days` /
-   `filter_regex` if you want (defaults: 30 days, no extra filtering beyond
+   `filter_regex` if you want (defaults: 180 days, no extra filtering beyond
    the built-in HA-discovery/system-topic noise filters).
 5. Return to **MQTT Logger**'s Info tab and enable:
   - "Show in sidebar" - for ease of access to the app.
   - "Watchdog" - for restarting the app if it crashes (not likely, but safe!).
   - "Auto update" - optionally.
 6. Start the app. **MQTT Logger** appears in the sidebar with the dashboard
-   ready - no separate Grafana login, no manual Node-RED flow import, no
-   Loki setup.
+   ready - no separate Grafana login, no flow to import, no Loki setup.
 
 ## Architecture
 
 ```
 MQTT broker (core-mosquitto)
-   -> Node-RED  ("MQTT -> Loki Logger" flow: filter, label, forward)
+   -> MQTT Logger service (Python: filter, label, forward)
         -> Loki (log storage, in-container)
              -> Grafana ("MQTT Devices" dashboard, reached via the sidebar)
 ```
 
 All three services run inside this one app/container. There is nothing to
-import or configure by hand in Node-RED or Grafana - the flow and dashboard
-are seeded automatically on first start.
+import or configure by hand - the dashboard is provisioned automatically on
+first start, and the logger service needs only the MQTT credentials from the
+Configuration tab.
 
 ## Prerequisites
 
@@ -58,7 +58,7 @@ are seeded automatically on first start.
 | `mqtt_username` | The dedicated MQTT user created above. Leave blank for an anonymous broker connection. |
 | `mqtt_password` | Password for that user. |
 | `retention_days` | How many days of MQTT history Loki keeps before deleting it. Applies on restart. |
-| `filter_regex` | A list of regex patterns (JavaScript syntax). Any MQTT message whose **topic or payload** matches one of these is dropped before it reaches Loki, in addition to the built-in `homeassistant/#`, `$SYS/#`, `discovery/#`, and `tasmota/#` noise filters, which always apply. |
+| `filter_regex` | A list of regex patterns (Python `re` syntax). Any MQTT message whose **topic or payload** matches one of these is dropped before it reaches Loki, in addition to the built-in `homeassistant/#`, `$SYS/#`, `discovery/#`, and `tasmota/#` noise filters, which always apply. |
 
 ## Using the dashboard
 
@@ -80,18 +80,7 @@ separate login). You'll see:
   spot busy periods or dead devices at a glance.
 
 The JSON viewer is display-only: Loki still stores every payload exactly
-as the device published it, and the Node-RED flow never rewrites your data.
-
-## Advanced: editing the Node-RED flow
-
-The Node-RED editor isn't part of the sidebar panel by default, since the
-dashboard is meant to need no manual flow editing. If you want to inspect or
-tweak the flow, this app maps container port `18880` - open
-`http://<your-home-assistant-ip>:18880` directly. Any changes you make there
-persist across restarts (they're saved to this app's own data directory, not
-overwritten by updates). If port `18880` is already reserved by another
-service in your HA, change the mapping in this app's **Network**
-configuration.
+as the device published it, and the logger service never rewrites your data.
 
 ## Where the data lives
 
@@ -102,7 +91,6 @@ Everything stateful sits in this app's own persistent volume, mounted at
 | --- | --- |
 | `/data/loki` | The log database itself - chunks, TSDB index, WAL, compactor state |
 | `/data/grafana` | Grafana's SQLite DB (users, prefs, any dashboards you add) |
-| `/data/nodered` | `flows.json`, credentials, Node-RED settings |
 
 That volume is keyed to the app's slug and is kept when the app is stopped,
 restarted, or **updated** - a new version reuses the same volume, so your
@@ -120,13 +108,69 @@ chunks out, at the cost of not restoring history with the app.
 1. Publish a test MQTT message (e.g. via Developer Tools -> Actions ->
    `mqtt.publish` in Home Assistant, or any MQTT client) to any topic that
    isn't under `homeassistant/`, `$SYS/`, `discovery/`, or `tasmota/`.
-2. Open the app's **Log** tab and confirm you see Node-RED's running-totals
-   counter incrementing.
+2. Open the app's **Log** tab and confirm the MQTT Logger service logs a
+   `forwarded N message(s) so far` line once the message arrives.
 3. Open the **MQTT Logger** dashboard from the sidebar and confirm your test
    device shows up.
 
 ## Troubleshooting
 
+- **The GUI never loads - the sidebar panel stays blank/unreachable, and the
+  Log tab shows the app restarting in a loop** (`s6-rc: ... legacy-services:
+  stopping`, `s6-svwait: fatal: timed out`, then `Loki exited (code 256)` /
+  `Grafana exited (code 256)`), even with this app's own **Watchdog** switched
+  off and plenty of free disk: this is host-wide memory exhaustion, not a bug
+  in Grafana/Loki/Node-RED - whichever of the three loses the race for memory
+  first is what gets killed, so the reported cause varies between restarts.
+  Diagnose it from the **Terminal & SSH** app's shell:
+
+  1. Confirm the host is actually memory-starved: `free -h`. Swap maxed out
+     and `available` near zero points at the host, not this app.
+  2. List every installed app and its slug: `ha apps list | grep -E
+     "name|slug"`.
+  3. Check RAM per app: `ha apps stats <slug>` for each slug from step 2 (this
+     app's own stats call can itself time out while the host is under
+     pressure - that's expected, not a separate bug). Whichever app shows an
+     outsized `memory_usage`/`memory_percent` is the offender.
+  4. If it turns out to be **Studio Code Server**: confirm by checking what
+     it has open. It opens `/config` as its workspace by default, with no
+     `.vscode/settings.json` excluding it from watching/indexing the large,
+     constantly-changing files that live there out of the box - especially
+     `home-assistant_v2.db` (the recorder database, often 1GB+) and any stale
+     `*.log.old` files.
+
+  Fix it by scoping VS Code's file watcher and search away from those files,
+  from the same shell:
+
+  ```sh
+  mkdir -p /config/.vscode
+  cat > /config/.vscode/settings.json <<'EOF'
+  {
+    "files.watcherExclude": {
+      "**/*.db": true,
+      "**/*.db-wal": true,
+      "**/*.db-shm": true,
+      "**/*.log": true,
+      "**/*.log.*": true,
+      "**/.storage/**": true,
+      "**/.cache/**": true,
+      "**/deps/**": true
+    },
+    "search.exclude": {
+      "**/*.db": true,
+      "**/*.log": true,
+      "**/*.log.*": true,
+      "**/.storage": true,
+      "**/.cache": true,
+      "**/deps": true
+    }
+  }
+  EOF
+  ```
+
+  Also delete genuinely dead log files (e.g. `home-assistant.log.old`) if
+  present, restart Studio Code Server, and re-check `free -h` / `ha apps
+  stats <its-slug>` before starting this app again.
 - **A device/topic you know is active doesn't show up in the dashboard's
   filters or table:** check for push failures in Loki -
   `{source="mqtt-logger", type="error", device="<device>"}` (e.g. oversized
@@ -141,18 +185,17 @@ chunks out, at the cost of not restoring history with the app.
   out-of-memory kills. Watchdog restarts the whole app automatically on a
   real crash.
 - **A `filter_regex` pattern doesn't seem to apply:** the pattern list is
-  compiled once when Node-RED starts. Restart the app after changing
-  `filter_regex` in Configuration.
-- **The Log tab shows `Connected to broker` / `Disconnected from broker`
-  repeating every ~15 seconds, even though the credentials are right:** two
-  MQTT clients are sharing one client id, and the broker closes the older
-  session every time the other one reconnects. Confirm it in the Mosquitto
-  broker app's own log - it prints `Client <id> already connected, closing
-  old connection.` The usual cause is the pre-app version of this project,
-  whose flow you imported by hand into your own Node-RED and which used the
-  same client id; delete or disable that flow, since this app now runs its
-  own copy internally. Any other MQTT client reusing the id
-  `ha-mqtt-logger-addon` does the same thing.
+  compiled once when the logger service starts. Restart the app after
+  changing `filter_regex` in Configuration. A pattern that fails to compile
+  is skipped with a warning in the **Log** tab.
+- **The Log tab shows `connected` / `disconnected` from the broker repeating
+  every few seconds, even though the credentials are right:** two MQTT
+  clients are sharing the client id `ha-mqtt-logger-addon`, and the broker
+  closes the older session every time the other one reconnects. Confirm it in
+  the Mosquitto broker app's own log - it prints `Client <id> already
+  connected, closing old connection.` Find and stop the other client reusing
+  that id (commonly a hand-imported flow from the pre-app version of this
+  project).
 
 ## Known limitations
 

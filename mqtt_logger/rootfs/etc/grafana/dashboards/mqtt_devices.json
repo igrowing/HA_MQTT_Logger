@@ -79,7 +79,7 @@
             "id": 1,
             "type": "table",
             "title": "MQTT devices",
-            "description": "One row per device, derived from every MQTT message logged to Loki by the Node-RED mqtt-loki-logger flow. 'Online' = at least one non-LWT message from that device in the last 10 minutes, OR its last known .../availability, .../online, .../status, or .../LWT payload (retained, looked back over 24h, case-insensitive) says online/true.",
+            "description": "One row per device, derived from every MQTT message logged to Loki by the MQTT Logger service. 'Online' = at least one non-LWT message from that device in the last 10 minutes, OR its last known .../availability, .../online, .../status, or .../LWT payload (retained, looked back over 24h, case-insensitive) says online/true.",
             "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
             "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
             "targets": [
