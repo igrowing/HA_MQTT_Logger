@@ -22,8 +22,11 @@ def test_real_and_noise_messages(publisher, loki, prefix):
     publisher("tasmota/discovery/AABBCC/config", prefix)
     publisher(f"{prefix}/thermostat/set", "dropme-by-user-pattern please")
 
+    # device == prefix for both real topics (it's the topic's first segment);
+    # matching on the label rather than a `|=` line filter, since the prefix
+    # only ever lands in the topic, not necessarily in the payload text.
     entries = Loki.wait_for(
-        f'{{source="mqtt"}} |= "{prefix}"',
+        f'{{source="mqtt", device="{prefix}"}}',
         lambda e: len(e) >= 2,
         timeout=30,
     )
@@ -43,14 +46,17 @@ def test_real_and_noise_messages(publisher, loki, prefix):
 
     # nothing from the noise topics or the user-filtered message leaked in
     time.sleep(2)
-    all_for_prefix = Loki.query_range(f'{{source="mqtt"}} |= "{prefix}"')
+    all_for_prefix = Loki.query_range(f'{{source="mqtt", device="{prefix}"}}')
     assert len(all_for_prefix) == 2
 
 
 def test_tasmota_topic_labelling(publisher, loki, prefix):
     publisher(f"stat/{prefix}_plug/POWER", "ON")
+    # device == "{prefix}_plug" (Tasmota's stat/<device>/<endpoint> shape),
+    # matched as a label - the payload itself ("ON") never contains the
+    # prefix, so a `|=` line filter would never match it.
     entries = Loki.wait_for(
-        f'{{source="mqtt", type="POWER"}} |= "{prefix}"',
+        f'{{source="mqtt", type="POWER", device="{prefix}_plug"}}',
         lambda e: len(e) >= 1,
     )
     labels = entries[0][0]
