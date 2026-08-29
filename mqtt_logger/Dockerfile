@@ -32,13 +32,13 @@ RUN ln -s /usr/share/grafana/bin/grafana /usr/bin/grafana
 # Loki: single static-ish binary
 COPY --from=loki /usr/bin/loki /usr/bin/loki
 
-# MQTT Logger service runtime. paho-mqtt comes from Alpine's own multi-arch
-# package repo (py3-paho-mqtt), so no pip / build toolchain is pulled in. If
-# a future base image drops that package, the fallback is:
-#   apk add --no-cache python3 py3-pip jq \
-#     && pip install --no-cache-dir --break-system-packages paho-mqtt
-# jq stays for cont-init and the dashboard-rewrite step below.
-RUN apk add --no-cache python3 py3-paho-mqtt jq
+# MQTT Logger service runtime. Alpine's own multi-arch package repo carries
+# py3-paho-mqtt, but pinned at 1.6.1 even on edge - well short of the 2.x
+# CallbackAPIVersion API this service is written against - so paho-mqtt has
+# to come from pip instead. jq stays for cont-init and the dashboard-rewrite
+# step below.
+RUN apk add --no-cache python3 py3-pip jq \
+    && pip install --no-cache-dir --break-system-packages "paho-mqtt>=2,<3"
 ENV PYTHONUNBUFFERED=1
 
 # Static config: Grafana provisioning + dashboard, Loki config template, and

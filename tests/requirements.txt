@@ -1,5 +1,5 @@
-# Test-only dependencies. The add-on image ships just python3 + py3-paho-mqtt;
-# none of this goes into it.
+# Test-only dependencies - none of this goes into the add-on image itself
+# (it pip-installs its own paho-mqtt at build time; see mqtt_logger/Dockerfile).
 paho-mqtt>=2,<3
 pytest>=8
 requests>=2.31
