@@ -31,11 +31,10 @@ services:
       - "13100:3100"
     volumes:
       - ./loki-config.yaml:/etc/loki/config.yaml:ro
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://localhost:3100/ready | grep -q ready"]
-      interval: 3s
-      timeout: 3s
-      retries: 30
+    # No healthcheck: this image's final stage is gcr.io/distroless/static,
+    # which ships neither a shell nor wget/curl, so a CMD-SHELL check can
+    # never execute. Readiness is instead polled from the host by
+    # wait-for-ready.sh (curl against the published port) before tests run.
 
   logger:
     build:
@@ -53,4 +52,4 @@ services:
       mosquitto:
         condition: service_healthy
       loki:
-        condition: service_healthy
+        condition: service_started
